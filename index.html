@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>خريطة مشاريع المساجد — الرياض</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+
+:root {
+  --teal:#0f7272;--teal-mid:#137272;--teal-lt:#1a9a9a;--teal-pale:#e8f7f7;--teal-bg:#f0fbfb;
+  --gold:#c8920a;--gold-bg:#fffbf0;--green:#1a7a40;--green-bg:#edfaf4;
+  --yellow:#9a6a00;--yellow-bg:#fffbea;--red:#b02020;--red-bg:#fff0f0;
+  --gray:#607080;--gray-bg:#f4f6f8;--white:#ffffff;--text:#1e2b36;--text-2:#4a6070;
+  --border:#dde8e8;--shadow:0 2px 12px rgba(15,114,114,.10);--shadow-lg:0 6px 28px rgba(15,114,114,.15);
+  --r:12px;--r-sm:8px;--nav-h:60px;--side-w:340px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Cairo',sans-serif;background:var(--teal-bg);color:var(--text);direction:rtl;font-size:14px}
+
+/* NAV */
+.nav{height:var(--nav-h);background:var(--teal-mid);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:relative;z-index:500;box-shadow:0 2px 12px rgba(0,0,0,.20)}
+.nav-brand{display:flex;align-items:center;gap:10px}
+.nav-icon{width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:18px}
+.nav-title{font-size:14px;font-weight:800;color:#fff}
+.nav-sub{font-size:10px;color:rgba(255,255,255,.70)}
+.nav-end{display:flex;gap:8px}
+.nav-btn{padding:7px 16px;border-radius:var(--r-sm);border:1.5px solid rgba(255,255,255,.28);background:transparent;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.18s}
+.nav-btn:hover{background:rgba(255,255,255,.15)}
+.nav-btn.gold{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 2px 10px rgba(200,146,10,.35)}
+.nav-btn.gold:hover{filter:brightness(1.1)}
+
+/* LAYOUT */
+.body-wrap{display:flex;height:calc(100vh - var(--nav-h))}
+
+/* SIDEBAR */
+.sidebar{width:var(--side-w);min-width:var(--side-w);background:var(--white);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:-3px 0 18px rgba(0,0,0,.06)}
+.stats-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:var(--teal-pale);border-bottom:1px solid var(--border)}
+.stat{background:var(--white);border-radius:var(--r-sm);padding:8px 10px;display:flex;align-items:center;gap:8px;border:1px solid var(--border)}
+.stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stat-n{font-size:18px;font-weight:900;line-height:1}
+.stat-l{font-size:10px;color:var(--text-2);font-weight:600}
+
+/* FILTERS */
+.filter-bar{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap}
+.fchip{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;border:1.5px solid var(--border);background:var(--white);color:var(--text-2)}
+.fchip:hover{border-color:var(--teal-lt);color:var(--teal)}
+.fchip.on{color:#fff;border-color:transparent}
+.fchip-all.on{background:var(--teal-mid)}.fchip-ok.on{background:var(--green)}.fchip-warn.on{background:#c8820a}.fchip-late.on{background:var(--red)}.fchip-done.on{background:#8a6a00}
+
+/* LIST */
+.proj-list{flex:1;overflow-y:auto;padding:8px}
+.proj-list::-webkit-scrollbar{width:5px}
+.proj-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.proj-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:7px;cursor:pointer;transition:.18s;position:relative}
+.proj-card:hover{border-color:var(--teal-lt);box-shadow:var(--shadow);transform:translateX(-2px)}
+.proj-card::before{content:'';position:absolute;right:0;top:0;bottom:0;width:4px;border-radius:0 var(--r) var(--r) 0}
+.proj-card.ok::before{background:var(--green)}.proj-card.warn::before{background:#c8820a}.proj-card.late::before{background:var(--red)}.proj-card.done::before{background:var(--gold)}.proj-card.stop::before{background:var(--gray)}
+.pc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.pc-name{font-size:13px;font-weight:800;color:var(--text);line-height:1.4}
+.pc-code{font-size:10px;color:var(--text-2);margin-top:2px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;flex-shrink:0}
+.badge-ok{background:var(--green-bg);color:var(--green)}.badge-warn{background:var(--yellow-bg);color:var(--yellow)}.badge-late{background:var(--red-bg);color:var(--red)}.badge-done{background:var(--gold-bg);color:var(--gold)}.badge-stop{background:var(--gray-bg);color:var(--gray)}
+.pc-meta{display:flex;gap:10px;margin-top:6px;font-size:11px;color:var(--text-2)}
+.pct-row{display:flex;align-items:center;gap:7px;margin-top:8px}
+.pct-track{flex:1;height:5px;border-radius:5px;background:var(--teal-pale);overflow:hidden}
+.pct-fill{height:100%;border-radius:5px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.pct-txt{font-size:11px;font-weight:800;min-width:28px}
+.pc-actions{display:flex;gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
+.pc-btn{flex:1;padding:5px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--white);color:var(--text-2);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:3px}
+.pc-btn:hover{background:var(--teal-pale);border-color:var(--teal-lt);color:var(--teal)}
+.pc-btn.qr:hover{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+.pc-btn.del:hover{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+
+/* SIDEBAR FOOTER */
+.side-footer{padding:10px 12px;border-top:1px solid var(--border);background:var(--teal-pale)}
+.add-btn{width:100%;padding:10px;background:var(--teal-mid);color:#fff;border:none;border-radius:var(--r-sm);font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:.18s;box-shadow:0 3px 12px rgba(15,114,114,.25)}
+.add-btn:hover{background:var(--teal);transform:translateY(-1px)}
+
+/* MAP */
+.map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+.map-legend{position:absolute;bottom:28px;right:12px;z-index:400;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;box-shadow:var(--shadow-lg);min-width:150px}
+.legend-title{font-size:11px;font-weight:800;color:var(--teal);margin-bottom:7px}
+.legend-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;font-size:11px;color:var(--text-2)}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+
+/* LEAFLET POPUP */
+.leaflet-popup-content-wrapper{border-radius:var(--r)!important;box-shadow:var(--shadow-lg)!important;border:1.5px solid var(--border)!important;font-family:'Cairo',sans-serif!important;direction:rtl;min-width:240px}
+.leaflet-popup-content{margin:0!important;color:var(--text)}
+.leaflet-popup-tip-container{display:none}
+.popup-head{padding:11px 14px 8px;border-bottom:1px solid var(--border)}
+.popup-title{font-size:13px;font-weight:800;color:var(--teal)}
+.popup-code{font-size:10px;color:var(--text-2);margin-top:2px}
+.popup-body{padding:10px 14px}
+.popup-row{display:flex;gap:6px;margin-bottom:5px;font-size:11px}
+.popup-lbl{font-weight:700;color:var(--teal);min-width:62px}
+.popup-val{color:var(--text-2)}
+.popup-pct-wrap{margin:8px 0 6px}
+.popup-pct-label{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+.popup-pct-label b{color:var(--teal)}
+.popup-pct-track{height:7px;background:var(--teal-pale);border-radius:7px;overflow:hidden}
+.popup-pct-fill{height:100%;border-radius:7px}
+.popup-foot{padding:8px 14px 10px;border-top:1px solid var(--border);display:flex;gap:6px}
+.popup-action{flex:1;padding:6px 4px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--white);color:var(--text-2);font-family:'Cairo',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:.15s;text-align:center}
+.popup-action:hover{background:var(--teal-pale);border-color:var(--teal-lt);color:var(--teal)}
+.popup-action.qr:hover{background:var(--gold-bg);border-color:var(--gold);color:var(--gold)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(10,40,40,.50);backdrop-filter:blur(4px);z-index:2000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .22s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--white);border:1px solid var(--border);border-radius:16px;width:92%;max-width:580px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.22);transform:translateY(16px);transition:transform .25s}
+.overlay.open .modal{transform:translateY(0)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--teal-pale),var(--white));border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1}
+.modal-ttl{font-size:15px;font-weight:800;color:var(--teal)}
+.modal-x{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);background:var(--white);color:var(--text-2);font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s}
+.modal-x:hover{background:var(--red-bg);border-color:var(--red);color:var(--red)}
+.modal-body{padding:18px 20px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--white);border-radius:0 0 16px 16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg label{font-size:11.5px;font-weight:800;color:var(--teal)}
+.fg input,.fg select,.fg textarea{padding:9px 11px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-family:inherit;font-size:13px;color:var(--text);background:var(--white);direction:rtl;transition:.18s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--teal-lt);box-shadow:0 0 0 3px rgba(26,154,154,.10)}
+.fg textarea{resize:vertical;min-height:70px}
+.btn-save{padding:9px 24px;border-radius:var(--r-sm);background:var(--teal-mid);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:.18s;box-shadow:0 3px 12px rgba(15,114,114,.25)}
+.btn-save:hover{background:var(--teal);transform:translateY(-1px)}
+.btn-cancel{padding:9px 18px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--white);color:var(--text-2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.18s}
+.btn-cancel:hover{border-color:var(--text-2);color:var(--text)}
+
+/* QR CARD */
+.qr-card{border:2.5px solid var(--teal-mid);border-radius:var(--r);overflow:hidden;margin-bottom:16px;background:var(--white);direction:rtl}
+.qr-card-header{background:linear-gradient(135deg,var(--teal) 0%,var(--teal-mid) 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.qrc-org{font-size:8.5px;color:rgba(255,255,255,.80);line-height:1.7}
+.qrc-min{font-size:11px;font-weight:900;color:#fff}
+.qrc-logo{font-size:30px;filter:brightness(1.3)}
+.qr-card-body{padding:14px;display:flex;gap:14px}
+.qrc-info{flex:1}
+.qrc-name{font-size:14px;font-weight:900;color:var(--teal);margin-bottom:8px}
+.qrc-row{display:flex;gap:6px;margin-bottom:4px;font-size:10px}
+.qrc-lbl{font-weight:800;color:var(--teal-mid);min-width:62px}
+.qrc-val{color:#333}
+#qr-wrap{width:90px;height:90px;flex-shrink:0}
+#qr-wrap canvas,#qr-wrap img{width:90px!important;height:90px!important}
+.qr-card-footer{padding:7px 14px;background:var(--teal-pale);border-top:1px solid var(--border);font-size:8px;color:var(--text-2);text-align:center}
+.qr-print-actions{display:flex;gap:10px;justify-content:center}
+.btn-print{padding:9px 22px;border-radius:var(--r-sm);background:var(--teal-mid);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:.18s;box-shadow:0 3px 12px rgba(15,114,114,.25)}
+.btn-print:hover{background:var(--teal)}
+.btn-dl{padding:9px 18px;border-radius:var(--r-sm);border:1.5px solid var(--border);background:var(--white);color:var(--text-2);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.18s}
+.btn-dl:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-bg)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--teal);color:#fff;padding:10px 24px;border-radius:24px;font-size:13px;font-weight:700;box-shadow:var(--shadow-lg);z-index:9000;transition:transform .3s;pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.empty{text-align:center;padding:40px 20px;color:var(--text-2)}
+.empty-icon{font-size:40px;margin-bottom:10px}
+.empty-text{font-size:13px}
+@media(max-width:720px){:root{--side-w:100%}.body-wrap{flex-direction:column}.sidebar{width:100%;height:50vh;min-width:unset}.map-wrap{flex:1}}
+
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">
+    <div class="nav-icon">🕌</div>
+    <div>
+      <div class="nav-title">خريطة مشاريع المساجد — منطقة الرياض</div>
+      <div class="nav-sub">وزارة الشؤون الإسلامية | إدارة المشاريع والصيانة</div>
+    </div>
+  </div>
+  <div class="nav-end">
+    <button class="nav-btn" onclick="saveData()">💾 حفظ</button>
+    <button class="nav-btn gold" onclick="openAdd()">＋ مشروع جديد</button>
+  </div>
+</nav>
+<div class="body-wrap">
+  <aside class="sidebar">
+    <div class="stats-strip" id="statsStrip"></div>
+    <div class="filter-bar">
+      <span class="fchip fchip-all on" onclick="filter('all',this)">الكل</span>
+      <span class="fchip fchip-ok"   onclick="filter('ok',this)">✅ في الموعد</span>
+      <span class="fchip fchip-warn" onclick="filter('warn',this)">⚠️ تأخير</span>
+      <span class="fchip fchip-late" onclick="filter('late',this)">🔴 متأخر</span>
+      <span class="fchip fchip-done" onclick="filter('done',this)">🏆 منجز</span>
+    </div>
+    <div class="proj-list" id="projList"></div>
+    <div class="side-footer">
+      <button class="add-btn" onclick="openAdd()">＋ إضافة مشروع جديد</button>
+    </div>
+  </aside>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="map-legend">
+      <div class="legend-title">🗺️ دليل الألوان</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#1a7a40"></div> في الموعد</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#c8820a"></div> تأخير طفيف</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#b02020"></div> تأخير كبير</div>
+      <div class="legend-row"><div class="legend-dot" style="background:#8a6a00"></div> منجز / مسلّم</div>
+    </div>
+  </div>
+</div>
+<!-- ADD MODAL -->
+<div class="overlay" id="addOverlay" onclick="bgClose(event,'addOverlay')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-ttl" id="addTitle">➕ إضافة مشروع جديد</div>
+      <button class="modal-x" onclick="closeM('addOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="eid">
+      <div class="g2">
+        <div class="fg"><label>اسم المشروع / المسجد *</label><input id="fn" placeholder="مثال: مسجد الرحمة — النزهة"></div>
+        <div class="fg"><label>رقم المشروع</label><input id="fc" placeholder="PRJ-2025-001"></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>الحي / الموقع</label><input id="fl" placeholder="حي النزهة، الرياض"></div>
+        <div class="fg"><label>المقاول المنفذ</label><input id="fco" placeholder="اسم الشركة أو المقاول"></div>
+      </div>
+      <div class="g3">
+        <div class="fg"><label>خط العرض * (Lat)</label><input id="flat" type="number" step="0.0001" placeholder="24.7136"></div>
+        <div class="fg"><label>خط الطول * (Lng)</label><input id="flng" type="number" step="0.0001" placeholder="46.6753"></div>
+        <div class="fg"><label>نسبة الإنجاز %</label><input id="fpct" type="number" min="0" max="100" placeholder="0"></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>الحالة *</label>
+          <select id="fst">
+            <option value="ok">✅ في الموعد</option>
+            <option value="warn">⚠️ تأخير طفيف</option>
+            <option value="late">🔴 تأخير كبير</option>
+            <option value="done">🏆 منجز / مسلّم</option>
+            <option value="stop">⏸️ متوقف مؤقتاً</option>
+          </select>
+        </div>
+        <div class="fg"><label>تاريخ الانتهاء المخطط</label><input id="fend" type="date"></div>
+      </div>
+      <div class="fg"><label>ملاحظات</label><textarea id="fnotes" placeholder="أي ملاحظات حول المشروع..."></textarea></div>
+      <div style="background:var(--teal-pale);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:11px;color:var(--text-2)">
+        💡 <strong style="color:var(--teal)">تلميح:</strong> ابحث في <a href="https://maps.google.com" target="_blank" style="color:var(--teal);font-weight:700">Google Maps</a> ← كليك يمين ← انسخ الإحداثيات
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="closeM('addOverlay')">إلغاء</button>
+      <button class="btn-save" onclick="saveProject()">💾 حفظ المشروع</button>
+    </div>
+  </div>
+</div>
+<!-- QR MODAL -->
+<div class="overlay" id="qrOverlay" onclick="bgClose(event,'qrOverlay')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <div class="modal-ttl">📱 بطاقة QR الموقع</div>
+      <button class="modal-x" onclick="closeM('qrOverlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:14px">اطبع هذه البطاقة وثبّتها على لوحة الموقع — يُعرض كامل بيانات المشروع عند مسح الرمز.</p>
+      <div class="qr-card" id="qrCardEl">
+        <div class="qr-card-header">
+          <div>
+            <div class="qrc-org">المملكة العربية السعودية</div>
+            <div class="qrc-min">وزارة الشؤون الإسلامية والدعوة والإرشاد</div>
+            <div class="qrc-org">فرع الوزارة بمنطقة الرياض — إدارة المشاريع والصيانة</div>
+          </div>
+          <div class="qrc-logo">🕌</div>
+        </div>
+        <div class="qr-card-body">
+          <div class="qrc-info">
+            <div class="qrc-name" id="qr-name">—</div>
+            <div class="qrc-row"><span class="qrc-lbl">رقم المشروع:</span><span class="qrc-val" id="qr-code">—</span></div>
+            <div class="qrc-row"><span class="qrc-lbl">الموقع:</span><span class="qrc-val" id="qr-loc">—</span></div>
+            <div class="qrc-row"><span class="qrc-lbl">المقاول:</span><span class="qrc-val" id="qr-cont">—</span></div>
+            <div class="qrc-row"><span class="qrc-lbl">نسبة الإنجاز:</span><span class="qrc-val" id="qr-pct">—</span></div>
+            <div class="qrc-row"><span class="qrc-lbl">تاريخ الانتهاء:</span><span class="qrc-val" id="qr-end">—</span></div>
+            <div class="qrc-row"><span class="qrc-lbl">الحالة:</span><span class="qrc-val" id="qr-stat">—</span></div>
+          </div>
+          <div id="qr-wrap"></div>
+        </div>
+        <div class="qr-card-footer">امسح رمز QR لعرض كامل بيانات المشروع • قسم المشاريع والصيانة</div>
+      </div>
+      <div class="qr-print-actions">
+        <button class="btn-print" onclick="printQR()">🖨️ طباعة البطاقة</button>
+        <button class="btn-dl" onclick="dlQR()">⬇️ تحميل QR</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const ST={ok:{label:'في الموعد',icon:'✅',color:'#1a7a40',bg:'#edfaf4'},warn:{label:'تأخير طفيف',icon:'⚠️',color:'#c8820a',bg:'#fffbea'},late:{label:'تأخير كبير',icon:'🔴',color:'#b02020',bg:'#fff0f0'},done:{label:'منجز / مسلّم',icon:'🏆',color:'#8a6a00',bg:'#fffbf0'},stop:{label:'متوقف',icon:'⏸️',color:'#607080',bg:'#f4f6f8'}};
+const SAMPLE=[{id:1,name:'مسجد الأمير سلطان',code:'PRJ-001',loc:'حي النزهة',co:'شركة الإتقان',lat:24.770,lng:46.635,pct:85,st:'ok',end:'2025-09-15',notes:'التشطيبات جارية'},{id:2,name:'مسجد الرحمة',code:'PRJ-002',loc:'حي العليا',co:'مؤسسة البناء الحديث',lat:24.698,lng:46.688,pct:60,st:'warn',end:'2025-07-30',notes:'تأخير في التكييف'},{id:3,name:'مسجد التوحيد',code:'PRJ-003',loc:'حي الملز',co:'شركة تعمير الخليج',lat:24.662,lng:46.721,pct:30,st:'late',end:'2025-06-01',notes:'إشكالية في الأساسات'},{id:4,name:'مسجد الفتح',code:'PRJ-004',loc:'حي الروضة',co:'مؤسسة النور',lat:24.718,lng:46.755,pct:100,st:'done',end:'2025-03-20',notes:'تم التسليم والافتتاح'},{id:5,name:'مسجد الإخلاص',code:'PRJ-005',loc:'حي الصحافة',co:'شركة الإتقان',lat:24.795,lng:46.657,pct:72,st:'ok',end:'2025-10-10',notes:'سير العمل منتظم'},{id:6,name:'مسجد السلام',code:'PRJ-006',loc:'حي الورود',co:'شركة تعمير الخليج',lat:24.684,lng:46.707,pct:45,st:'warn',end:'2025-08-15',notes:'تأخير بسبب الأمطار'},{id:7,name:'مسجد الهدى',code:'PRJ-007',loc:'حي الربوة',co:'مؤسسة البناء الحديث',lat:24.742,lng:46.615,pct:90,st:'ok',end:'2025-09-01',notes:'على وشك الاكتمال'},{id:8,name:'مسجد الإيمان',code:'PRJ-008',loc:'حي الفيصلية',co:'مؤسسة النور',lat:24.650,lng:46.785,pct:15,st:'late',end:'2025-05-30',notes:'توقف بسبب نزاع تعاقدي'}];
+let projects=[],curFilter='all',map,mkrs={},curQR=null,editId=null;
+window.addEventListener('DOMContentLoaded',()=>{const r=localStorage.getItem('msp_v3');projects=r?JSON.parse(r):JSON.parse(JSON.stringify(SAMPLE));initMap();render();});
+function initMap(){map=L.map('map',{zoomControl:false}).setView([24.713,46.675],11);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);L.control.zoom({position:'bottomleft'}).addTo(map);renderMarkers();}
+function markerIcon(st){const s=ST[st]||ST.ok;const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40"><path d="M16 0C7.16 0 0 7.16 0 16c0 11 16 24 16 24S32 27 32 16C32 7.16 24.84 0 16 0z" fill="${s.color}" stroke="white" stroke-width="2"/><circle cx="16" cy="16" r="8" fill="rgba(255,255,255,0.25)"/><text x="16" y="21" text-anchor="middle" font-size="13">${s.icon}</text></svg>`;return L.divIcon({html:svg,className:'',iconSize:[32,40],iconAnchor:[16,40],popupAnchor:[0,-42]});}
+function renderMarkers(){Object.values(mkrs).forEach(m=>map.removeLayer(m));mkrs={};const list=curFilter==='all'?projects:projects.filter(p=>p.st===curFilter);list.forEach(p=>{if(!p.lat||!p.lng)return;const m=L.marker([p.lat,p.lng],{icon:markerIcon(p.st)});m.bindPopup(makePopup(p),{maxWidth:280});m.addTo(map);mkrs[p.id]=m;});if(Object.keys(mkrs).length){map.fitBounds(L.featureGroup(Object.values(mkrs)).getBounds().pad(0.15));}}
+function makePopup(p){const s=ST[p.st]||ST.ok;const pct=Math.min(100,p.pct||0);return `<div style="direction:rtl;font-family:Cairo,sans-serif"><div class="popup-head"><div class="popup-title">${p.name}</div><div class="popup-code">${p.code||''}</div></div><div class="popup-body"><div class="popup-row"><span class="popup-lbl">📍 الموقع</span><span class="popup-val">${p.loc||'—'}</span></div><div class="popup-row"><span class="popup-lbl">🏢 المقاول</span><span class="popup-val">${p.co||'—'}</span></div><div class="popup-row"><span class="popup-lbl">📅 الانتهاء</span><span class="popup-val">${p.end||'—'}</span></div><div class="popup-row"><span class="popup-lbl">🔖 الحالة</span><span style="background:${s.bg};color:${s.color};padding:2px 8px;border-radius:12px;font-size:10px;font-weight:800">${s.icon} ${s.label}</span></div><div class="popup-pct-wrap"><div class="popup-pct-label"><span>نسبة الإنجاز</span><b>${pct}%</b></div><div class="popup-pct-track"><div class="popup-pct-fill" style="width:${pct}%;background:${s.color}"></div></div></div>${p.notes?`<div style="font-size:10px;color:#4a6070;padding:6px 8px;background:#f0fbfb;border-radius:6px;border-right:3px solid ${s.color};margin-top:6px">${p.notes}</div>`:''}</div><div class="popup-foot"><button class="popup-action" onclick="gmap(${p.lat},${p.lng})">🗺️ Google Maps</button><button class="popup-action qr" onclick="openQR(${p.id})">📱 QR Code</button></div></div>`;}
+function gmap(lat,lng){window.open(`https://www.google.com/maps?q=${lat},${lng}`,'_blank');}
+function flyTo(id){const p=projects.find(x=>x.id===id);if(!p?.lat)return;map.flyTo([p.lat,p.lng],15,{duration:1.2});setTimeout(()=>mkrs[id]?.openPopup(),1300);}
+function render(){renderStats();renderList();renderMarkers();}
+function renderStats(){const c={ok:0,warn:0,late:0,done:0};projects.forEach(p=>{if(c[p.st]!==undefined)c[p.st]++;});const items=[{n:projects.length,l:'إجمالي المشاريع',col:'#0f7272'},{n:c.ok,l:'في الموعد',col:'#1a7a40'},{n:c.warn,l:'تأخير طفيف',col:'#c8820a'},{n:c.late,l:'تأخير كبير',col:'#b02020'},{n:c.done,l:'منجز',col:'#8a6a00'}];document.getElementById('statsStrip').innerHTML=items.map(i=>`<div class="stat"><div class="stat-dot" style="background:${i.col}"></div><div class="stat-body"><div class="stat-n" style="color:${i.col}">${i.n}</div><div class="stat-l">${i.l}</div></div></div>`).join('');}
+function renderList(){const list=curFilter==='all'?projects:projects.filter(p=>p.st===curFilter);const el=document.getElementById('projList');if(!list.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">لا توجد مشاريع</div></div>`;return;}el.innerHTML=list.map(p=>{const cfg=ST[p.st]||ST.ok;const pct=Math.min(100,p.pct||0);const bc={ok:'badge-ok',warn:'badge-warn',late:'badge-late',done:'badge-done',stop:'badge-stop'}[p.st]||'badge-ok';return `<div class="proj-card ${p.st}" onclick="flyTo(${p.id})"><div class="pc-head"><div><div class="pc-name">${p.name}</div><div class="pc-code">${p.code||''}</div></div><span class="badge ${bc}">${cfg.icon} ${cfg.label}</span></div><div class="pc-meta"><span>📍 ${p.loc||'—'}</span><span>📅 ${p.end||'—'}</span></div><div class="pct-row"><div class="pct-track"><div class="pct-fill" style="width:${pct}%;background:${cfg.color}"></div></div><span class="pct-txt" style="color:${cfg.color}">${pct}%</span></div><div class="pc-actions"><button class="pc-btn" onclick="sp(event);editProj(${p.id})">✏️ تعديل</button><button class="pc-btn qr" onclick="sp(event);openQR(${p.id})">📱 QR</button><button class="pc-btn" onclick="sp(event);gmap(${p.lat},${p.lng})">🗺️</button><button class="pc-btn del" onclick="sp(event);delProj(${p.id})">🗑️</button></div></div>`;}).join('');}
+function sp(e){e.stopPropagation();}
+function filter(v,el){curFilter=v;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));el.classList.add('on');render();}
+function openAdd(){editId=null;document.getElementById('addTitle').textContent='➕ إضافة مشروع جديد';['fn','fc','fl','fco','flat','flng','fpct','fnotes'].forEach(id=>document.getElementById(id).value='');document.getElementById('fst').value='ok';document.getElementById('fend').value='';openM('addOverlay');}
+function editProj(id){const p=projects.find(x=>x.id===id);if(!p)return;editId=id;document.getElementById('addTitle').textContent='✏️ تعديل المشروع';document.getElementById('fn').value=p.name||'';document.getElementById('fc').value=p.code||'';document.getElementById('fl').value=p.loc||'';document.getElementById('fco').value=p.co||'';document.getElementById('flat').value=p.lat||'';document.getElementById('flng').value=p.lng||'';document.getElementById('fpct').value=p.pct||'';document.getElementById('fst').value=p.st||'ok';document.getElementById('fend').value=p.end||'';document.getElementById('fnotes').value=p.notes||'';openM('addOverlay');}
+function saveProject(){const name=document.getElementById('fn').value.trim();const lat=parseFloat(document.getElementById('flat').value);const lng=parseFloat(document.getElementById('flng').value);if(!name){toast('⚠️ أدخل اسم المشروع');return;}if(isNaN(lat)||isNaN(lng)){toast('⚠️ أدخل إحداثيات صحيحة');return;}const obj={id:editId||Date.now(),name,code:document.getElementById('fc').value.trim(),loc:document.getElementById('fl').value.trim(),co:document.getElementById('fco').value.trim(),lat,lng,pct:parseInt(document.getElementById('fpct').value)||0,st:document.getElementById('fst').value,end:document.getElementById('fend').value,notes:document.getElementById('fnotes').value.trim()};if(editId){const i=projects.findIndex(x=>x.id===editId);if(i!==-1)projects[i]=obj;toast('✅ تم تعديل المشروع');}else{projects.push(obj);toast('✅ تمت إضافة المشروع');}saveData();closeM('addOverlay');render();}
+function delProj(id){if(!confirm('هل تريد حذف هذا المشروع؟'))return;projects=projects.filter(x=>x.id!==id);saveData();render();toast('🗑️ تم الحذف');}
+function openQR(id){const p=projects.find(x=>x.id===id);if(!p)return;curQR=p;const s=ST[p.st]||ST.ok;document.getElementById('qr-name').textContent=p.name;document.getElementById('qr-code').textContent=p.code||'—';document.getElementById('qr-loc').textContent=p.loc||'—';document.getElementById('qr-cont').textContent=p.co||'—';document.getElementById('qr-pct').textContent=(p.pct||0)+'%';document.getElementById('qr-end').textContent=p.end||'—';document.getElementById('qr-stat').textContent=s.icon+' '+s.label;const wrap=document.getElementById('qr-wrap');wrap.innerHTML='';new QRCode(wrap,{text:[`اسم المشروع: ${p.name}`,`الرمز: ${p.code||'—'}`,`الموقع: ${p.loc||'—'}`,`المقاول: ${p.co||'—'}`,`نسبة الإنجاز: ${p.pct||0}%`,`الحالة: ${s.label}`,`الانتهاء: ${p.end||'—'}`,`GPS: ${p.lat},${p.lng}`].join('\n'),width:90,height:90,colorDark:'#0f7272',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});openM('qrOverlay');}
+function printQR(){const card=document.getElementById('qrCardEl').outerHTML;const w=window.open('','_blank','width=520,height=420');w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800;900&display=swap" rel="stylesheet"><style>body{font-family:'Cairo',sans-serif;background:#fff;margin:20px;direction:rtl}.qr-card{border:2.5px solid #137272;border-radius:12px;overflow:hidden;max-width:440px}.qr-card-header{background:linear-gradient(135deg,#0f7272,#137272);padding:10px 14px;display:flex;align-items:center;justify-content:space-between}.qrc-org{font-size:8.5px;color:rgba(255,255,255,.80);line-height:1.7}.qrc-min{font-size:11px;font-weight:900;color:#fff}.qrc-logo{font-size:30px}.qr-card-body{padding:14px;display:flex;gap:14px}.qrc-info{flex:1}.qrc-name{font-size:14px;font-weight:900;color:#0f7272;margin-bottom:8px}.qrc-row{display:flex;gap:6px;margin-bottom:4px;font-size:10px}.qrc-lbl{font-weight:800;color:#137272;min-width:62px}.qrc-val{color:#333}#qr-wrap canvas,#qr-wrap img{width:90px!important;height:90px!important}.qr-card-footer{padding:7px 14px;background:#e8f7f7;border-top:1px solid #dde8e8;font-size:8px;color:#607080;text-align:center}</style></head><body>${card}<script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);w.document.close();}
+function dlQR(){const wrap=document.getElementById('qr-wrap');const el=wrap.querySelector('canvas')||wrap.querySelector('img');if(!el){toast('⚠️ QR لم يكتمل');return;}const a=document.createElement('a');a.href=el.tagName==='CANVAS'?el.toDataURL('image/png'):el.src;a.download=`QR-${curQR?.code||'project'}.png`;a.click();toast('⬇️ تم تحميل QR');}
+function saveData(){localStorage.setItem('msp_v3',JSON.stringify(projects));toast('💾 تم الحفظ');}
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+function bgClose(e,id){if(e.target===document.getElementById(id))closeM(id);}
+let tt;function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),2800);}
+</script>
+</body>
+</html>
